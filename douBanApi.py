@@ -8,33 +8,46 @@ import json
 import MySQLdb
 import datetime
 import time
-num = 1000000
+num = 1000181
 while(num<100000000):
     url = 'https://api.douban.com/v2/note/user_created/'+str(num)
-    #heade = {'apikey': '116cac245911274a9921658b1ddea6ad'}
-    #req = urllib2.Request(url, headers= heade)
     req = urllib2.Request(url)
-    resp = urllib2.urlopen(req)
-    resp = json.load(resp)
-    content = json.dumps(resp, ensure_ascii= False)
-    if(content):
-        print(content)
-    if(resp['total']!=0):
+    try:
+        resp = urllib2.urlopen(req)
+        resp = json.load(resp)
+        content = json.dumps(resp, ensure_ascii= False)
+        cnt = resp['total']
+        varnum = 0
+        if(cnt>20):
+            cnt = 20
+        if(content):
+            print(content)
+        while(resp['total']!=0 & varnum<cnt):
+            # 打开数据库连接
+            db = MySQLdb.connect("localhost","root","123","doubanapi" ,charset='utf8')
+            saveNote(db)
+            # 关闭数据库连接
+            db.close()
+            varnum = varnum+1
+    except:
+        print("no user...")
+    num = num+1
+    time.sleep(10)
+
+    def saveNote(db):
         userId = resp['user']['id']
-        nodeId = resp['notes'][0]['id']
+        nodeId = resp['notes'][varnum]['id']
         name = resp['user']['name']
-        title = str(resp['notes'][0]['title'].encode('utf-8'))
-        summary = str(resp['notes'][0]['summary'].encode('utf-8'))
-        content = str(resp['notes'][0]['content'].encode('utf-8'))
-        comments = int(resp['notes'][0]['comments_count'])
-        liked = int(resp['notes'][0]['liked_count'])
-        up = resp['notes'][0]['update_time']
+        title = str(resp['notes'][varnum]['title'].encode('utf-8'))
+        summary = str(resp['notes'][varnum]['summary'].encode('utf-8'))
+        content = str(resp['notes'][varnum]['content'].encode('utf-8'))
+        comments = int(resp['notes'][varnum]['comments_count'])
+        liked = int(resp['notes'][varnum]['liked_count'])
+        up = resp['notes'][varnum]['update_time']
         update = datetime.datetime.strptime(up, "%Y-%m-%d %H:%M:%S")
-        pu = resp['notes'][0]['publish_time']
+        pu = resp['notes'][varnum]['publish_time']
         publish = datetime.datetime.strptime(pu, "%Y-%m-%d %H:%M:%S")
-        print(title)
-        # 打开数据库连接
-        db = MySQLdb.connect("localhost","root","123","doubanapi" ,charset='utf8')
+
         # 使用cursor()方法获取操作游标
         cursor = db.cursor()
         # 执行sql语句
@@ -44,8 +57,3 @@ while(num<100000000):
                        (nodeId, userId, name, title, summary, content, comments, liked, update, publish))
         # 提交到数据库执行
         db.commit()
-
-        # 关闭数据库连接
-        db.close()
-    num = num+1
-    time.sleep(10)
